@@ -74,13 +74,13 @@ const createTableListField = function(table, tableArgs, tableType, docClient) {
   };
 }
 
-module.exports.createSchema = function( tables, opts) {
+module.exports.createSchema = function(tables, opts) {
   const options = _.extend(opts, {
     name: 'Root',
     description: 'Root of the Schema',
   });
 
-  const dynamodb = opts.dynamodbFactory();
+  const dynamodb = options.dynamodbFactory();
   const docClient = options.docClientFactory();
 
   BbPromise.promisifyAll(docClient);

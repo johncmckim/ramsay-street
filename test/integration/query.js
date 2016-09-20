@@ -9,13 +9,8 @@ const graphqlDynamo = require('../../src');
 const AWS = require('aws-sdk');
 
 describe('#query()', () => {
-  const opts = {
-    region: 'us-east-1',
-    endpoint: 'http://localhost:8000',
-  };
 
-  AWS.config.update(opts);
-  const dynamodb = new AWS.DynamoDB(opts);
+  const dynamodb = new AWS.DynamoDB();
 
   const tables = [{
     typeName: 'movie',
@@ -53,23 +48,23 @@ describe('#query()', () => {
     }`;
 
     return connector.query(query)
-      .then((response) => {
-        console.log(response);
+      .then((data) => {
+        expect(data).to.not.equal(null);
       });
   });
 
-  it('should query items', () => {
+  it('should query items', (done) => {
     const connector = graphqlDynamo(tables, options);
 
     const query = `{
-      movie(year: 2013) {
+      movies(year: 2013) {
         year, title
       }
     }`;
 
     return connector.query(query)
-      .then((response) => {
-        console.log(response);
+      .then((data) => {
+        expect(data).to.not.equal(null);
       });
   });
 });
