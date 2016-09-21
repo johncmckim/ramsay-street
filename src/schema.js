@@ -35,7 +35,7 @@ const createTableArgs = function(table) {
   return args;
 }
 
-const createTableType = function(table, tableArgs, docClient) {
+const createTableType = function(table) {
   const fields = {};
 
   addKeyToFields(table.hashKey, fields);
@@ -43,8 +43,6 @@ const createTableType = function(table, tableArgs, docClient) {
   if(table.rangeKey) {
     addKeyToFields(table.rangeKey, fields);
   }
-
-  // console.log(`Creating table ${table.name}`);
 
   const tableType = new graphql.GraphQLObjectType({
     name: table.typeName,
@@ -80,7 +78,6 @@ module.exports.createSchema = function(tables, opts) {
     description: 'Root of the Schema',
   });
 
-  const dynamodb = options.dynamodbFactory();
   const docClient = options.docClientFactory();
 
   BbPromise.promisifyAll(docClient);

@@ -33,8 +33,6 @@ const deleteTableParams = {
 };
 
 const createData = function(docClient) {
-  console.log('creating data');
-
   const addOperations = _.map(movieData, function(movie) {
     var params = {
         TableName: tableName,
@@ -62,7 +60,7 @@ const createData = function(docClient) {
 
 const init = function(dynamodb) {
   const docClient = clientFactory.docClient(dynamodb);
-  console.log('creating table')
+
   const createTable = new BbPromise(function(resolve, reject) {
     dynamodb.createTable(createTableParams, function(err, data) {
       if (err) {

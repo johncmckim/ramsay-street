@@ -30,11 +30,11 @@ describe('#query()', () => {
     dynamodbFactory: () => dynamodb
   };
 
-  beforeEach(() => {
+  before(() => {
     return setup.init(dynamodb);
   });
 
-  afterEach(function() {
+  after(function() {
     return setup.cleanup(dynamodb);
   });
 
@@ -42,18 +42,27 @@ describe('#query()', () => {
     const connector = graphqlDynamo(tables, options);
 
     const query = `{
-      movie(year: 2013, title: "Turn It Down, Or Else!") {
+      movie(year: 2013, title: "Rush") {
         year, title
       }
     }`;
 
     return connector.query(query)
-      .then((data) => {
+      .then((result) => {
+        expect(result).to.not.equal(null);
+
+        const data = result.data;
         expect(data).to.not.equal(null);
+
+        const movie = result.data.movie;
+        expect(movie).to.deep.equal({
+          year: 2013,
+          title: 'Rush'
+        });
       });
   });
 
-  it('should query items', (done) => {
+  it('should query items', () => {
     const connector = graphqlDynamo(tables, options);
 
     const query = `{
@@ -63,8 +72,25 @@ describe('#query()', () => {
     }`;
 
     return connector.query(query)
-      .then((data) => {
+      .then((result) => {
+        expect(result).to.not.equal(null);
+
+        if(result.errors) {
+          console.error(result.errors)
+          throw 'Error'
+        }
+
+        const data = result.data;
         expect(data).to.not.equal(null);
+
+        const movies = result.data.movies;
+        expect(movies).to.not.equal(null);
+        expect(movies.length).to.equal(3);
+        expect(movies).to.deep.equal([
+          { year: 2013, title: 'Prisoners' },
+          { year: 2013, title: 'Rush' },
+          { year: 2013, title: 'The Hunger Games: Catching Fire' }
+        ]);
       });
   });
 });
