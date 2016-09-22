@@ -1,57 +1,120 @@
 'use strict';
 
+const BbPromise = require('bluebird');
+const _ = require('lodash');
+const words = require('./words');
+
 const getProjection = (fieldAst) => {
-  return fieldAst.selectionSet.selections.map((s) => {
+  const fields = fieldAst.selectionSet.selections.map((s) => {
     return s.name.value
   });
+
+  return fields;
+}
+
+const getExpressionAttributeName = (field) => '#_' + field;
+const getAttributeName = (field) => words.isReservedWord(field) ? getExpressionAttributeName(field) : field;
+const getExpressionAttributeValue = (name) => ':_' + name;
+
+const getKey = (table, args) => {
+  const hashKeyName = table.hashKey.name;
+
+  const key = {};
+  key[hashKeyName] = args[hashKeyName];
+
+  if(table.rangeKey) {
+    const rangeKeyName = table.rangeKey.name;
+    key[rangeKeyName] = args[rangeKeyName];
+  }
+
+  return key;
+};
+
+const getKeyCondition = (table) => {
+  const name = table.hashKey.name;
+  const expressionName = getAttributeName(name);
+  const expressionValue = getExpressionAttributeValue(name);
+  return expressionName + ' = ' + expressionValue;
+};
+
+const getExpressionAttributeNames = (fields) => {
+  const atttributeNames = _.reduce(fields, (result, field) => {
+    if(words.isReservedWord(field)) {
+      const name = getExpressionAttributeName(field);
+      result[name] = field;
+    }
+
+    return result;
+  }, {});
+
+  console.log('attribute names', atttributeNames);
+  return atttributeNames;
+};
+
+const getExpressionAttributeValues = (args) => {
+  const atttributeValues = _.reduce(args, (result, value, name) => {
+    const key = getExpressionAttributeValue(name);
+    result[key] = value;
+    return result;
+  }, {});
+
+  console.log('attribute values', atttributeValues);
+  return atttributeValues;
+};
+
+const getProjectionExpression = (fields) => {
+  const expressionFields = _.map(fields, getAttributeName);
+  const expression = _.join(expressionFields, ',');
+
+  console.log('projection expression', expression);
+  return expression;
 };
 
 const get = function(docClient, table, args, ast) {
   const fields = getProjection(ast.fieldASTs[0]);
+
+  const key = getKey(table, args);
+  const atttributeNames = getExpressionAttributeNames(fields);
+  const expression = getProjectionExpression(fields);
+
   const params = {
     TableName: table.tableName,
-    Key: {
-      year: args.year,
-      title: args.title
-    },
-    AttributesToGet: fields
+    Key: key,
+    ExpressionAttributeNames: atttributeNames,
+    ProjectionExpression: expression
   };
 
-  return docClient.getAsync(params)
-          .then(result => result.Item)
-          .catch(err => {
-            throw { message: err.message };
-          });
+  return docClient
+          .getAsync(params)
+          .then(result => result.Item);
 }
 
 const query = function(docClient, table, args, ast) {
   const fields = getProjection(ast.fieldASTs[0]);
 
-  console.log('Fields ', fields);
+  const keyCondition = getKeyCondition(table);
+  const atttributeNames = getExpressionAttributeNames(fields);
+  const attributeValues = getExpressionAttributeValues(args);
+  const expression = getProjectionExpression(fields);
 
   const params = {
       TableName : table.tableName,
-      KeyConditionExpression: '#hash = :yyyy',
-      ExpressionAttributeNames:{
-          '#hash': 'year'
-      },
-      ExpressionAttributeValues: {
-          ':yyyy': args.year
-      },
-      AttributesToGet: fields,
+      KeyConditionExpression: keyCondition,
+      ExpressionAttributeNames: atttributeNames,
+      ExpressionAttributeValues: attributeValues,
+      ProjectionExpression: expression,
   };
 
   return docClient
           .queryAsync(params)
           .then((result) => {
-            console.log('Result', result)
             return result.Items;
-          })
-          .catch(err => {
-            throw { message: err.message };
           });
 }
 
+const throwErr = (err) => {
+  return BbPromise.reject(err.toString());
+};
 
 module.exports.resolveGet = function(table, docClient) {
   return function(source, args, root, ast) {
@@ -59,7 +122,7 @@ module.exports.resolveGet = function(table, docClient) {
       throw new Error('Only query is supported');
     }
 
-    return get(docClient, table, args, ast);
+    return get(docClient, table, args, ast).catch(throwErr);
   };
 };
 
@@ -69,6 +132,6 @@ module.exports.resolveQuery = function(table, docClient) {
       throw new Error('Only query is supported');
     }
 
-    return query(docClient, table, args, ast);
+    return query(docClient, table, args, ast).catch(throwErr);
   };
 };

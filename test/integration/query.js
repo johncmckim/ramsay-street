@@ -1,6 +1,8 @@
 'use strict';
 
-const expect = require('chai').expect;
+const chai = require('chai');
+const assert = chai.assert;
+const expect = chai.expect;
 
 const setup = require('./setup');
 
@@ -38,7 +40,7 @@ describe('#query()', () => {
     return setup.cleanup(dynamodb);
   });
 
-  it('should get item', () => {
+  it('should get item', (done) => {
     const connector = graphqlDynamo(tables, options);
 
     const query = `{
@@ -47,9 +49,11 @@ describe('#query()', () => {
       }
     }`;
 
-    return connector.query(query)
+    connector.query(query)
       .then((result) => {
+        console.log('Query Result', result);
         expect(result).to.not.equal(null);
+        expect(result.errors).to.equal(undefined);
 
         const data = result.data;
         expect(data).to.not.equal(null);
@@ -59,10 +63,15 @@ describe('#query()', () => {
           year: 2013,
           title: 'Rush'
         });
+        done();
+      })
+      .catch((err) => {
+        console.log('error');
+        done(err);
       });
   });
 
-  it('should query items', () => {
+  it('should query items', (done) => {
     const connector = graphqlDynamo(tables, options);
 
     const query = `{
@@ -71,14 +80,11 @@ describe('#query()', () => {
       }
     }`;
 
-    return connector.query(query)
+    connector.query(query)
       .then((result) => {
+        console.log('Query Result', result);
         expect(result).to.not.equal(null);
-
-        if(result.errors) {
-          console.error(result.errors)
-          throw 'Error'
-        }
+        expect(result.errors).to.equal(undefined);
 
         const data = result.data;
         expect(data).to.not.equal(null);
@@ -91,6 +97,10 @@ describe('#query()', () => {
           { year: 2013, title: 'Rush' },
           { year: 2013, title: 'The Hunger Games: Catching Fire' }
         ]);
+        done();
+      }).catch(function (err) {
+        console.error(err)
+        done(err);
       });
   });
 });
